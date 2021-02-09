@@ -9,7 +9,8 @@ runtime:
         - sodium
         - ctype
         - iconv
-        
+        - pdo_pgsql
+
 
 #variables:
 #    php:
@@ -20,6 +21,9 @@ build:
     flavor: none
 
 disk: 512
+
+relationships:
+    database: "db:postgresql"
 
 web:
     locations:
@@ -38,7 +42,7 @@ hooks:
         set -x -e
 
         curl -fs https://get.symfony.com/cloud/configurator | (>&2 bash)
-        
+
         (>&2 symfony-build)
 
     deploy: |
