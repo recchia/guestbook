@@ -4,6 +4,7 @@ namespace App\Entity;
 
 use App\Repository\CommentRepository;
 use Doctrine\ORM\Mapping as ORM;
+use Symfony\Component\Validator\Constraints as Assert;
 
 /**
  * @ORM\Entity(repositoryClass=CommentRepository::class)
@@ -16,38 +17,42 @@ class Comment
      * @ORM\GeneratedValue
      * @ORM\Column(type="integer")
      */
-    private $id;
+    private ?int $id;
 
     /**
      * @ORM\Column(type="string", length=255)
      */
-    private $author;
+    #[Assert\NotBlank]
+    private ?string $author;
 
     /**
      * @ORM\Column(type="text")
      */
-    private $text;
+    #[Assert\NotBlank]
+    private ?string $text;
 
     /**
      * @ORM\Column(type="string", length=255)
      */
-    private $email;
+    #[Assert\NotBlank]
+    #[Assert\Email]
+    private ?string $email;
 
     /**
      * @ORM\Column(type="datetime")
      */
-    private $createdAt;
+    private ?\DateTimeInterface $createdAt;
 
     /**
      * @ORM\ManyToOne(targetEntity=Conference::class, inversedBy="comments")
      * @ORM\JoinColumn(nullable=false)
      */
-    private $conference;
+    private ?Conference $conference;
 
     /**
      * @ORM\Column(type="string", length=255, nullable=true)
      */
-    private $photoFilename;
+    private ?string $photoFilename;
 
     public function getId(): ?int
     {
