@@ -7,6 +7,8 @@ use App\Repository\CommentRepository;
 use App\SpamChecker;
 use Doctrine\ORM\EntityManagerInterface;
 use Psr\Log\LoggerInterface;
+use Symfony\Bridge\Twig\Mime\NotificationEmail;
+use Symfony\Component\Mailer\MailerInterface;
 use Symfony\Component\Messenger\Handler\MessageHandlerInterface;
 use Symfony\Component\Messenger\MessageBusInterface;
 use Symfony\Component\Workflow\WorkflowInterface;
@@ -19,6 +21,8 @@ final class CommentMessageHandler implements MessageHandlerInterface
     private MessageBusInterface $messageBus;
     private WorkflowInterface $commentStateMachine;
     private ?LoggerInterface $logger;
+    private MailerInterface $mailer;
+    private string $adminEmail;
 
     public function __construct(
         EntityManagerInterface $entityManager,
@@ -26,6 +30,8 @@ final class CommentMessageHandler implements MessageHandlerInterface
         CommentRepository $commentRepository,
         MessageBusInterface $messageBus,
         WorkflowInterface $commentStateMachine,
+        MailerInterface $mailer,
+        string $adminEmail,
         ?LoggerInterface $logger = null
     )
     {
@@ -35,6 +41,8 @@ final class CommentMessageHandler implements MessageHandlerInterface
         $this->messageBus = $messageBus;
         $this->commentStateMachine = $commentStateMachine;
         $this->logger = $logger;
+        $this->mailer = $mailer;
+        $this->adminEmail = $adminEmail;
     }
 
     public function __invoke(CommentMessage $message)
@@ -59,9 +67,14 @@ final class CommentMessageHandler implements MessageHandlerInterface
             $this->entityManager->flush();
 
             $this->messageBus->dispatch($message);
-        } elseif ($this->commentStateMachine->can($comment, 'publish') || $this->workflow->can($comment, 'publish_ham')) {
-            $this->commentStateMachine->apply($comment, $this->workflow->can($comment, 'publish') ? 'publish' : 'publish_ham');
-            $this->entityManager->flush();
+        } elseif ($this->commentStateMachine->can($comment, 'publish') || $this->commentStateMachine->can($comment, 'publish_ham')) {
+            $this->mailer->send((new NotificationEmail())
+                ->subject('New comment posted')
+                ->htmlTemplate('emails/comment_notification.html.twig')
+                ->from($this->adminEmail)
+                ->to($this->adminEmail)
+                ->context(['comment' => $comment])
+            );
         } elseif ($this->logger) {
             $this->logger->debug('Dropping comment message', ['comment' => $comment->getId(), 'state' => $comment->getState()]);
         }
